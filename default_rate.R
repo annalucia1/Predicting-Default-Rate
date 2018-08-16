@@ -1,7 +1,8 @@
+# load the data
 loan <- read.csv('LoanStats_securev1_2016Q1.csv', header = TRUE, stringsAsFactors = FALSE, skip = 1)
 loanT <- loan
 library(zoo)
-# How do we understand data? Let's use dates related features as example.
+
 # There are "" in the last_pymnt_d, why?
 head(loan[, c('issue_d', 'last_pymnt_d', 'next_pymnt_d')])
 dim(subset(loan, next_pymnt_d == ""))
@@ -18,13 +19,10 @@ table(subset(loan, next_pymnt_d != "" & last_pymnt_d != "")$loan_status)
 
 loan <- subset(loan, loan_status != "")
 
-# Based on the observation.
-# One possible interesting question to explore is at which phase, payment is likely to be missed.
-# what other options do we have here?
+# Questions to explore
 # 1) Upon loan initial application, predict whether it will be charge off or default.
 # 2) Throughout loan payment period, predict whether next payment will be missing,
 #                                    or in next quarter, whether loan status will be changed.
-# what else?
 
 loan$issue_d_1 <- as.Date(as.yearmon(loan$issue_d, "%b-%Y"))
 loan$issue_year <- as.character(format(loan$issue_d_1, "%Y"))
@@ -44,12 +42,12 @@ sum(table(loan$last_pymnt_from_issue_cat))
 
 # Why there are so many NA
 table(subset(loan, is.na(last_pymnt_from_issue_cat))$last_pymnt_d)
-# We see ~148 have no payment at all, the rest have same last payment date as issue date.
-# So we need some change in code.
+# ~148 have no payment at all, the rest have same last payment date as issue date.
+# need some change in code.
 loan$last_pymnt_from_issue[which(is.na(loan$last_pymnt_from_issue))] <- 0
 loan$last_pymnt_from_issue_cat[which(is.na(loan$last_pymnt_from_issue_cat))] <- 'no pymnt'
 
-# Then if we want to check if last_pymnt_from_issue_cat could be a useful feature:
+# check if last_pymnt_from_issue_cat could be a useful feature:
 by.pymnt.gap <- with(loan, table(loan_status, last_pymnt_from_issue_cat))
 by.pymnt.gap <- by.pymnt.gap[c("Charged Off", "Default", "Late (31-120 days)",
                                "Late (16-30 days)", "In Grace Period", "Current",
@@ -70,8 +68,8 @@ summary(mod2)
 # https://stats.stackexchange.com/questions/224863/understanding-complete-separation-for-logistic-regression/224864#224864
 with(loan, table(loan_status_binary, last_pymnt_from_issue_cat))
 
-# Let's start with feature processing.
-# Similarly, we should process all dates related columns same.
+# feature processing.
+# process all dates related columns same.
 date.cols <- colnames(loan)[c(which(grepl('_d$', colnames(loan))),
                               which(grepl('_date$', colnames(loan))))]
 # "issue_d"                   "last_pymnt_d"              "next_pymnt_d"             
@@ -233,7 +231,6 @@ loan$emp_length <- ifelse(loan$emp_length == 'n/a', loan$emp_length,
                                  '< 3 years', ifelse(loan$emp_length %in% c('4 years', '5 years', '6 years', '7 years'), 
                                                      '4-7 years', '> 8 years')))
 
-# I am not giving out much code about modeling since I hope our students could spend more time with more freedom on it.
 set.seed(1)
 train.ind <- sample(1:dim(loan)[1], 0.7* dim(loan)[1])
 train <- loan[train.ind, ]
